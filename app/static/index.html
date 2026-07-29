@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AML/CTF Knowledge Assistant — Demo</title>
+<style>
+/* ---- palette: validated categorical slots 1-3 + reserved status ---- */
+.viz-root, body {
+  color-scheme: light;
+  --surface-1:#fcfcfb; --plane:#f9f9f7;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --line:#e1e0d9;
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a;
+  --seq-250:#86b6ef; --seq-450:#2a78d6; --seq-600:#184f95;
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --radius:10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root,
+  :root:where(:not([data-theme="light"])) body {
+    color-scheme: dark;
+    --surface-1:#1a1a19; --plane:#0d0d0d;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --line:#2c2c2a;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+    --seq-250:#184f95; --seq-450:#2a78d6; --seq-600:#86b6ef;
+  }
+}
+:root[data-theme="dark"] .viz-root, :root[data-theme="dark"] body {
+  color-scheme: dark;
+  --surface-1:#1a1a19; --plane:#0d0d0d;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --line:#2c2c2a;
+  --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+  --seq-250:#184f95; --seq-450:#2a78d6; --seq-600:#86b6ef;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--text-primary);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{border-bottom:1px solid var(--line);padding:12px 22px;background:var(--surface-1);
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+h1{font-size:15px;margin:0;font-weight:600}
+.badge{font-size:11px;color:var(--text-secondary);border:1px solid var(--line);
+  padding:3px 9px;border-radius:20px;white-space:nowrap}
+.badge b{color:var(--text-primary);font-weight:600}
+button,select{background:var(--surface-1);color:var(--text-primary);
+  border:1px solid var(--line);padding:7px 12px;border-radius:8px;font-size:13px;cursor:pointer}
+button.primary{background:var(--series-1);color:#fff;border-color:var(--series-1);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+label{font-size:12px;color:var(--text-secondary);margin-right:5px}
+
+nav.tabs{display:flex;gap:2px;padding:0 22px;background:var(--surface-1);
+  border-bottom:1px solid var(--line);position:sticky;top:53px;z-index:19}
+nav.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;
+  background:none;padding:11px 15px;color:var(--text-secondary);font-size:14px}
+nav.tabs button[aria-selected=true]{color:var(--text-primary);
+  border-bottom-color:var(--series-1);font-weight:600}
+
+.page{display:none;padding:22px}
+.page.active{display:block}
+.wrap{max-width:1240px;margin:0 auto}
+
+/* ---------- chat ---------- */
+.chatgrid{display:grid;grid-template-columns:1fr 400px;gap:18px;align-items:start}
+.askrow{display:flex;gap:10px;margin-bottom:12px}
+input[type=text]{flex:1;background:var(--surface-1);color:var(--text-primary);
+  border:1px solid var(--line);padding:12px 14px;border-radius:var(--radius);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.chip{font-size:12px;background:var(--surface-1);border:1px solid var(--line);
+  padding:5px 10px;border-radius:20px;cursor:pointer;color:var(--text-secondary)}
+.chip:hover{color:var(--text-primary);border-color:var(--series-1)}
+.card{background:var(--surface-1);border:1px solid var(--line);
+  border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.verdict{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  letter-spacing:.7px;padding:3px 9px;border-radius:5px;margin-bottom:10px;text-transform:uppercase}
+.v-answered{color:var(--good);border:1px solid var(--good)}
+.v-refused{color:var(--critical);border:1px solid var(--critical)}
+.v-partial{color:var(--serious);border:1px solid var(--serious)}
+.summary{font-size:16px;line-height:1.6;margin:0 0 14px}
+.claim{border-left:2px solid var(--grid);padding:8px 0 8px 14px;margin:12px 0}
+.cite{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  background:var(--plane);border:1px solid var(--line);color:var(--series-1);
+  padding:2px 7px;border-radius:5px;margin:5px 5px 0 0;cursor:pointer}
+.cite:hover{border-color:var(--series-1)}
+.caveat{font-size:13px;color:var(--serious);margin-top:6px}
+.stamp{font-size:12px;color:var(--text-secondary);border-top:1px solid var(--line);
+  padding-top:10px;margin-top:14px}
+.src{border:1px solid var(--line);border-radius:8px;padding:11px;margin-bottom:8px;
+  background:var(--surface-1);cursor:pointer}
+.src h4{margin:0 0 5px;font-size:12px;font-weight:600}
+.src .meta{font-size:11px;color:var(--text-muted);margin-bottom:6px}
+.src pre{white-space:pre-wrap;font:12px/1.5 inherit;color:var(--text-secondary);
+  margin:0;max-height:120px;overflow:hidden}
+.src.open pre{max-height:none;color:var(--text-primary)}
+.tag{font-size:10px;padding:1px 6px;border-radius:4px;margin-right:5px;border:1px solid var(--line)}
+.t-tenant{color:var(--series-3);border-color:var(--series-3)}
+.t-law{color:var(--series-1);border-color:var(--series-1)}
+.esc{background:var(--plane);border:1px dashed var(--axis);border-radius:8px;padding:12px;
+  font:11px/1.5 ui-monospace,Menlo,monospace;color:var(--text-secondary);
+  white-space:pre-wrap;max-height:300px;overflow-y:auto;margin-top:8px}
+
+/* ---------- dashboard ---------- */
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.9px;color:var(--text-secondary);
+  margin:26px 0 12px;font-weight:600}
+h2:first-child{margin-top:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+.kpi{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--radius);padding:15px}
+.kpi .k{font-size:11px;color:var(--text-secondary);text-transform:uppercase;
+  letter-spacing:.6px;margin-bottom:7px}
+.kpi .v{font-size:34px;font-weight:600;line-height:1.05;letter-spacing:-.5px}
+.kpi .t{font-size:11px;color:var(--text-muted);margin-top:6px}
+.kpi.ok .v{color:var(--good)} .kpi.bad .v{color:var(--critical)}
+.kpi.warn .v{color:var(--serious)}
+
+.chart{background:var(--surface-1);border:1px solid var(--line);
+  border-radius:var(--radius);padding:18px}
+.chart h3{margin:0 0 3px;font-size:14px;font-weight:600}
+.chart .sub{font-size:12px;color:var(--text-secondary);margin:0 0 16px}
+.row{display:grid;grid-template-columns:170px 1fr 62px;gap:10px;align-items:center;
+  margin-bottom:7px;font-size:13px}
+.row .lab{color:var(--text-secondary);text-align:right;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.track{background:var(--grid);border-radius:4px;height:16px;overflow:hidden;display:flex}
+.bar{height:16px;border-radius:0 4px 4px 0;transition:width .3s}
+.row .val{font-variant-numeric:tabular-nums;color:var(--text-primary);font-size:12px}
+.stack{display:flex;height:26px;border-radius:4px;overflow:hidden;background:var(--grid)}
+.seg{height:26px;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:#fff;box-shadow:0 0 0 1px var(--surface-1) inset}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;
+  color:var(--text-secondary)}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block;
+  margin-right:6px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--text-muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--axis)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:hover td{background:var(--plane)}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+.pill{font-size:10.5px;padding:2px 7px;border-radius:20px;border:1px solid var(--line);
+  white-space:nowrap}
+.p-ok{color:var(--good);border-color:var(--good)}
+.p-bad{color:var(--critical);border-color:var(--critical)}
+.p-neutral{color:var(--text-secondary)}
+.note{background:var(--surface-1);border:1px solid var(--line);border-left:3px solid var(--series-1);
+  border-radius:8px;padding:14px 16px;font-size:13.5px;line-height:1.6;color:var(--text-secondary)}
+.note b{color:var(--text-primary)}
+.note code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--plane);
+  padding:2px 6px;border-radius:4px;color:var(--text-primary)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.filters{display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap}
+.filters input{flex:1;min-width:200px;background:var(--surface-1);color:var(--text-primary);
+  border:1px solid var(--line);padding:8px 11px;border-radius:8px;font-size:13px}
+footer{font-size:11px;color:var(--text-muted);padding:16px 22px;border-top:1px solid var(--line);
+  line-height:1.7;background:var(--surface-1)}
+dialog{background:var(--surface-1);color:var(--text-primary);border:1px solid var(--line);
+  border-radius:var(--radius);max-width:800px;width:92%;padding:22px}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog pre{white-space:pre-wrap;font:13px/1.6 inherit;max-height:62vh;overflow-y:auto}
+.spin{color:var(--text-muted);font-size:14px}
+@media (max-width:960px){.chatgrid,.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="viz-root">
+
+<header>
+  <h1>AML/CTF Knowledge Assistant</h1>
+  <span class="badge" id="b-corpus">…</span>
+  <span class="badge" id="b-embed">…</span>
+  <span class="badge" id="b-gen">…</span>
+  <span style="flex:1"></span>
+  <div><label for="tenant">Client</label><select id="tenant"></select></div>
+  <div><label for="segment">Segment</label><select id="segment"></select></div>
+  <button id="theme" title="Toggle theme">◐</button>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="chat" aria-selected="true">Chat</button>
+  <button role="tab" data-tab="evaluation" aria-selected="false">Evaluation</button>
+  <button role="tab" data-tab="corpus" aria-selected="false">Corpus</button>
+</nav>
+
+<!-- ============================ CHAT ============================ -->
+<section class="page active" id="page-chat"><div class="wrap chatgrid">
+  <div>
+    <div class="askrow">
+      <input type="text" id="q" placeholder="Ask about an AML/CTF obligation…" autocomplete="off">
+      <button class="primary" id="go">Ask</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="out"></div>
+  </div>
+  <div>
+    <h2 style="margin-top:0">Retrieved sources</h2>
+    <div id="sources"><p class="spin">Ask a question to see what was retrieved.</p></div>
+  </div>
+</div></section>
+
+<!-- ========================= EVALUATION ========================= -->
+<section class="page" id="page-eval"><div class="wrap" id="eval-body">
+  <p class="spin">Loading…</p>
+</div></section>
+
+<!-- =========================== CORPUS =========================== -->
+<section class="page" id="page-corpus"><div class="wrap" id="corpus-body">
+  <p class="spin">Loading…</p>
+</div></section>
+
+<footer id="attrib"></footer>
+
+<dialog id="dlg"><h3 id="dlg-title" style="margin-top:0"></h3><pre id="dlg-body"></pre>
+  <div style="margin-top:14px"><button onclick="document.getElementById('dlg').close()">Close</button></div>
+</dialog>
+
+<script>
+const EXAMPLES = [
+  "When must a threshold transaction report be given to AUSTRAC?",
+  "What is a designated service?",
+  "Is gold bullion a precious metal?",
+  "What does section 5A say?",
+  "What does our SOP say about onboarding a trust client?",
+  "Who do we escalate unusual activity to?",
+  "What is our record retention period?",
+  "Am I a reporting entity?",
+  "Is this transaction suspicious?",
+  "What does the NZ AML Act require?"
+];
+const $ = s => document.querySelector(s);
+const esc = s => (s==null?'':String(s)).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+const pct = n => (n==null?'—':(n*100).toFixed(0)+'%');
+let CFG={}, METRICS=null;
+
+/* ------------------------------- theme ------------------------------- */
+$('#theme').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : (cur === 'light' ? '' : 'dark');
+  if(next) document.documentElement.setAttribute('data-theme', next);
+  else document.documentElement.removeAttribute('data-theme');
+};
+
+/* -------------------------------- tabs ------------------------------- */
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav.tabs button')
+    .forEach(x => x.setAttribute('aria-selected', x===b));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const id = b.dataset.tab === 'chat' ? 'page-chat'
+           : b.dataset.tab === 'evaluation' ? 'page-eval' : 'page-corpus';
+  $('#'+id).classList.add('active');
+  if(b.dataset.tab === 'evaluation') renderEval();
+  if(b.dataset.tab === 'corpus') renderCorpus();
+});
+
+/* -------------------------------- boot ------------------------------- */
+async function boot(){
+  CFG = await (await fetch('/api/config')).json();
+  const t = $('#tenant');
+  t.innerHTML = '<option value="">— shared corpus only —</option>' +
+    CFG.tenants.map(x=>`<option value="${x.id}">${esc(x.label)}</option>`).join('');
+  if(CFG.tenants.length) t.value = CFG.tenants[0].id;
+  $('#segment').innerHTML = CFG.segments
+    .map(s=>`<option ${s===CFG.default_segment?'selected':''}>${s}</option>`).join('');
+
+  $('#b-corpus').innerHTML = `<b>${(CFG.stats.total||0).toLocaleString()}</b> chunks`;
+  $('#b-embed').innerHTML  = `embed <b>${esc(CFG.providers.embedding)}</b>`;
+  $('#b-gen').innerHTML    = CFG.providers.generation_available
+    ? `gen <b>${esc(CFG.providers.generation)}</b>`
+    : `gen <b>not configured</b> — retrieval only`;
+
+  $('#chips').innerHTML = EXAMPLES.map(e=>`<span class="chip">${esc(e)}</span>`).join('');
+  document.querySelectorAll('.chip').forEach(c =>
+    c.onclick = ()=>{ $('#q').value = c.textContent; runAsk(); });
+
+  $('#attrib').innerHTML = CFG.attribution.map(a=>`<div>${esc(a)}</div>`).join('') +
+    `<div style="margin-top:7px">This assistant provides information based on legislation
+     and AUSTRAC guidance. It does not provide legal advice and does not guarantee
+     compliance. Your obligations remain with you as the reporting entity.
+     Not endorsed by or affiliated with AUSTRAC. Meridian Accounting Partners and
+     Corvid Advisory are fictional firms; their documents were written for this demo.</div>`;
+}
+
+/* -------------------------------- chat ------------------------------- */
+async function showSource(key){
+  const r = await fetch('/api/source/' + encodeURIComponent(key));
+  if(!r.ok) return;
+  const d = await r.json();
+  $('#dlg-title').textContent = d.heading_path.join('  ›  ');
+  $('#dlg-body').textContent = d.content + `\n\n— ${d.citation_key}` +
+    (d.compilation_no ? `  ·  compilation ${d.compilation_no}` : '') +
+    (d.effective_from ? `  ·  in force ${d.effective_from}` : '') + `\n${d.source_url}`;
+  $('#dlg').showModal();
+}
+
+function renderAnswer(d){
+  let h = `<div class="card"><span class="verdict v-${d.answer_type}">${d.answer_type}</span>`;
+  h += `<p class="summary">${esc(d.summary)}</p>`;
+  for(const c of d.claims)
+    h += `<div class="claim">${esc(c.text)}<br>` +
+      c.citations.map(k=>`<span class="cite" data-k="${esc(k)}">${esc(k)}</span>`).join('') + `</div>`;
+  for(const cv of d.caveats) h += `<div class="caveat">⚠ ${esc(cv)}</div>`;
+  h += `<div class="stamp">${esc(d.corpus_version)}`;
+  if(d.validation && d.validation.claims_in !== undefined){
+    h += ` · ${d.validation.claims_kept}/${d.validation.claims_in} claims passed citation validation`;
+    if(d.validation.invalid_citations?.length)
+      h += ` · <span style="color:var(--critical)">${d.validation.invalid_citations.length} invalid citation(s) rejected</span>`;
+  }
+  h += `</div>`;
+  if(d.diagnostics?.dense_error){
+    h += `<div style="margin-top:12px;padding:12px;border-radius:8px;
+      border:1px solid var(--critical);color:var(--critical);font-size:13px">
+      <b>Dense retrieval is DOWN — running on BM25 only.</b><br>
+      <code style="font-size:12px">${esc(d.diagnostics.dense_error)}</code><br>
+      <span style="color:var(--text-secondary)">Answers will be worse and it
+      will refuse more than it should. Fix this before demoing.</span></div>`;
+  }
+  h += `</div>`;
+  if(d.escalation_packet)
+    h += `<div class="card"><h2 style="margin-top:0">Escalation to a human — pre-researched</h2>
+          <div class="esc">${esc(d.escalation_packet)}</div></div>`;
+  $('#out').innerHTML = h;
+  document.querySelectorAll('.cite').forEach(a => a.onclick = ()=>showSource(a.dataset.k));
+
+  $('#sources').innerHTML = d.sources.length ? d.sources.map(s=>{
+    const tag = s.tenant_id ? `<span class="tag t-tenant">${esc(s.tenant_id)}</span>`
+                            : `<span class="tag t-law">${esc(s.doc_type)}</span>`;
+    return `<div class="src" onclick="this.classList.toggle('open')">
+      <h4>${tag}${esc(s.label)}</h4>
+      <div class="meta mono">${esc(s.citation_key)} · ${esc(s.why)} · ${s.score}</div>
+      <pre>${esc(s.content.slice(0,1200))}</pre></div>`;
+  }).join('') : '<p class="spin">Nothing retrieved.</p>';
+}
+
+async function runAsk(){
+  const q = $('#q').value.trim(); if(!q) return;
+  $('#go').disabled = true;
+  $('#out').innerHTML = '<p class="spin">Retrieving and checking citations…</p>';
+  try{
+    const r = await fetch('/api/ask',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q, tenant_id:$('#tenant').value||null,
+                           segment:$('#segment').value})});
+    renderAnswer(await r.json());
+  }catch(e){ $('#out').innerHTML = `<div class="card">Request failed: ${esc(e.message)}</div>`; }
+  $('#go').disabled = false;
+}
+$('#go').onclick = runAsk;
+$('#q').addEventListener('keydown', e => { if(e.key==='Enter') runAsk(); });
+
+/* ----------------------------- charts -------------------------------- */
+// Horizontal bar, sequential single hue: magnitude comparison.
+function barChart(title, sub, rows, hue){
+  const max = Math.max(...rows.map(r=>r.value), 1);
+  return `<div class="chart"><h3>${esc(title)}</h3><p class="sub">${esc(sub)}</p>` +
+    rows.map(r=>`<div class="row" title="${esc(r.label)}: ${r.value}">
+      <span class="lab">${esc(r.label)}</span>
+      <span class="track"><span class="bar" style="width:${(r.value/max*100).toFixed(1)}%;
+        background:${hue||'var(--seq-450)'}"></span></span>
+      <span class="val">${r.value.toLocaleString()}</span></div>`).join('') + `</div>`;
+}
+
+// Stacked bar, part-to-whole. Direct labels on every segment (required:
+// aqua sits below 3:1 on the light surface, so colour never carries alone).
+function stackChart(title, sub, segs){
+  const total = segs.reduce((a,s)=>a+s.value,0) || 1;
+  return `<div class="chart"><h3>${esc(title)}</h3><p class="sub">${esc(sub)}</p>
+    <div class="stack">` + segs.filter(s=>s.value>0).map(s=>
+      `<span class="seg" style="width:${(s.value/total*100).toFixed(1)}%;background:${s.color}"
+        title="${esc(s.label)}: ${s.value}">${s.value/total>0.09?s.value:''}</span>`).join('') +
+    `</div><div class="legend">` + segs.map(s=>
+      `<span><i style="background:${s.color}"></i>${esc(s.label)} — <b>${s.value}</b></span>`
+    ).join('') + `</div></div>`;
+}
+
+function kpi(k, v, t, cls){
+  return `<div class="kpi ${cls||''}"><div class="k">${esc(k)}</div>
+    <div class="v">${v}</div><div class="t">${esc(t||'')}</div></div>`;
+}
+
+/* --------------------------- evaluation ------------------------------ */
+async function loadMetrics(){
+  if(!METRICS) METRICS = await (await fetch('/api/metrics')).json();
+  return METRICS;
+}
+
+async function renderEval(){
+  const m = await loadMetrics();
+  const e = m.eval;
+  if(!e){
+    $('#eval-body').innerHTML = `<div class="note">No evaluation results yet. Run
+      <code>python -m eval.run_eval --retrieval</code> (no API key needed) or
+      <code>python -m eval.run_eval</code> for the full pipeline.</div>`;
+    return;
+  }
+  const full = e.mode === 'full';
+  let h = `<div class="note"><b>${e.total_cases} golden-set cases</b>, mode
+    <b>${esc(e.mode)}</b>, embeddings <b>${esc(e.embed_provider)}</b>${
+    e.llm_provider?`, generation <b>${esc(e.llm_provider)}</b>`:''}, reranker
+    <b>${!e.reranker_configured ? 'off'
+        : (e.reranker_actually_used === e.total_cases ? 'on, all queries'
+        : `on but only ${e.reranker_actually_used}/${e.total_cases} queries`)}</b>.
+    Generated ${esc(e.generated_at)}.
+    ${(e.rerank_errors||[]).length ? `<div style="margin-top:8px;color:var(--critical)">
+      Rerank errors: ${e.rerank_errors.map(esc).join(' · ')}</div>` : ''}
+    ${full?'':' Retrieval-only mode measures isolation and recall; refusal and citation metrics need the full run.'}</div>`;
+
+  h += `<h2>Headline metrics</h2><div class="kpis">`;
+  h += kpi('Cross-tenant leaks', e.leaks, e.leaks?'P0 — stop and fix':'target 0',
+           e.leaks? 'bad':'ok');
+  if(full){
+    h += kpi('Refusal recall', pct(e.refusal_recall),
+             `${e.refusal_correct}/${e.refusal_expected} · target 100%`,
+             e.refusal_recall>=1?'ok':'bad');
+    h += kpi('Invalid citations', e.invalid_citations,
+             e.invalid_citations
+               ? 'caught and dropped before render'
+               : 'target 0 · enforced mechanically',
+             e.invalid_citations?'warn':'ok');
+    h += kpi('Over-refusals', e.over_refusals,
+             `of ${e.answerable} answerable`, e.over_refusals?'warn':'ok');
+    h += kpi('Unexpected refusals', pct(e.unexpected_refusal_rate ?? 0),
+             `${e.over_refusals}/${e.answerable} answerable questions refused`,
+             (e.unexpected_refusal_rate ?? 0) <= 0.05 ? 'ok' : 'warn');
+    h += kpi('Refusal rate (all)', pct(e.refusal_rate),
+             `${pct(e.refusal_by_design_rate)} of this set is refusal-by-design`);
+    h += kpi('Passing', `${e.passing}/${e.total_cases}`, 'expected vs actual');
+    h += kpi('Mean latency', `${e.mean_latency_ms}<span style="font-size:15px"> ms</span>`,
+             'end to end');
+  } else {
+    h += kpi('Cases retrieving', `${e.retrieved_something}/${e.total_cases}`,
+             'at least one source', e.retrieved_something===e.total_cases?'ok':'warn');
+    h += kpi('Mean sources', e.mean_retrieved, 'per question');
+    h += kpi('Mean latency', `${Math.round(e.cases.reduce((a,c)=>a+(c.latency_ms||0),0)/e.cases.length)}<span style="font-size:15px"> ms</span>`,
+             'retrieval only');
+  }
+  h += `</div>`;
+
+  // retrieval mix — why hybrid matters
+  const mix = {dense:0, lexical:0, both:0, expansion:0};
+  for(const c of e.cases) for(const [k,v] of Object.entries(c.why_mix||{})){
+    if(k==='dense') mix.dense+=v; else if(k==='lexical') mix.lexical+=v;
+    else if(k==='both') mix.both+=v; else mix.expansion+=v;
+  }
+  h += `<h2>Retrieval</h2><div class="grid2">`;
+  h += stackChart('Where each source came from',
+    'Lexical-only hits are the ones dense retrieval would have missed — exact section numbers and statutory terms of art.',
+    [{label:'Both methods', value:mix.both, color:'var(--series-1)'},
+     {label:'Dense only', value:mix.dense, color:'var(--series-2)'},
+     {label:'Lexical only (BM25)', value:mix.lexical, color:'var(--series-3)'},
+     {label:'Definitions + cross-refs', value:mix.expansion, color:'var(--text-muted)'}]);
+
+  if(full && e.by_category?.length){
+    const max = Math.max(...e.by_category.map(c=>c.pass+c.fail),1);
+    h += `<div class="chart"><h3>Cases by category</h3>
+      <p class="sub">Pass means the answered/refused outcome matched what the golden set expects.</p>` +
+      e.by_category.map(c=>`<div class="row">
+        <span class="lab">${esc(c.category)}</span>
+        <span class="track">
+          <span class="bar" style="width:${(c.pass/max*100).toFixed(1)}%;background:var(--good);border-radius:0"></span>
+          <span class="bar" style="width:${(c.fail/max*100).toFixed(1)}%;background:var(--critical)"></span>
+        </span><span class="val">${c.pass}/${c.pass+c.fail}</span></div>`).join('') +
+      `<div class="legend"><span><i style="background:var(--good)"></i>✓ pass</span>
+       <span><i style="background:var(--critical)"></i>✗ fail</span></div></div>`;
+  } else {
+    const byCat = {};
+    for(const c of e.cases) byCat[c.category] = (byCat[c.category]||0)+1;
+    h += barChart('Cases by category', 'Composition of the golden set.',
+      Object.entries(byCat).map(([k,v])=>({label:k, value:v})));
+  }
+  h += `</div>`;
+
+  h += `<h2>Every case</h2><div class="chart" style="padding:0;overflow-x:auto">
+    <table><thead><tr><th>ID</th><th>Category</th><th>Question</th><th>Client</th>
+    <th>Expected</th>${full?'<th>Got</th><th>Claims</th>':'<th>Sources</th><th>Top hit</th>'}
+    <th>Leak</th><th>ms</th></tr></thead><tbody>`;
+  for(const c of e.cases){
+    const okPill = c.leak.length ? `<span class="pill p-bad">LEAK</span>`
+                                 : `<span class="pill p-ok">clean</span>`;
+    const outcome = full
+      ? `<td><span class="pill ${c.pass?'p-ok':'p-bad'}">${esc(c.got)}</span></td><td>${c.claims}</td>`
+      : `<td>${c.retrieved}</td><td class="mono">${esc((c.top||'').slice(0,42))}</td>`;
+    h += `<tr><td class="mono">${esc(c.id)}</td><td>${esc(c.category)}</td>
+      <td>${esc(c.question)}</td><td>${esc(c.tenant||'—')}</td>
+      <td><span class="pill p-neutral">${esc(c.expect)}</span></td>
+      ${outcome}<td>${okPill}</td><td>${c.latency_ms}</td></tr>`;
+  }
+  h += `</tbody></table></div>`;
+
+  if(full && e.invalid_citation_detail?.length){
+    h += `<h2>Citation validation</h2><div class="note">
+      The validator rejected ${e.invalid_citations} citation(s) the model
+      invented. <b>This is the guardrail working</b> — the claim never reached
+      the user. Cases:
+      ${e.invalid_citation_detail.map(d=>
+        `<div style="margin-top:6px"><b>${esc(d.id)}</b> → cited
+         <code>${d.keys.map(esc).join(', ')}</code>, which was not in the
+         retrieved set for that query.</div>`).join('')}
+      </div>`;
+  }
+
+  if(full && (e.refusal_missed?.length || e.over_refusal_cases?.length)){
+    h += `<h2>Needs attention</h2><div class="note">`;
+    if(e.refusal_missed?.length)
+      h += `<div><b style="color:var(--critical)">Missed refusals:</b> ${e.refusal_missed.join(', ')}
+            — each one is the entire risk of the product.</div>`;
+    if(e.over_refusal_cases?.length)
+      h += `<div style="margin-top:8px"><b style="color:var(--serious)">Over-refusals:</b>
+            ${e.over_refusal_cases.join(', ')} — an assistant that refuses too much gets switched off.</div>`;
+    h += `</div>`;
+  }
+  $('#eval-body').innerHTML = h;
+}
+
+/* ------------------------------ corpus ------------------------------- */
+async function renderCorpus(){
+  const m = await loadMetrics();
+  const man = m.manifest, st = m.storage;
+  let h = `<div class="note"><b>Where the indexed documents live.</b> ${esc(st.note)}
+    <div style="margin-top:9px">
+    Downloaded source cache — <code>${esc(st.downloaded_cache)}</code>
+      (${st.cache_files} files)<br>
+    SQLite index (text + metadata + BM25) — <code>${esc(st.sqlite_index)}</code>
+      (${(st.sqlite_bytes/1048576).toFixed(1)} MB)<br>
+    Vectors — <code>${esc(st.vectors_path||st.vectors)}</code>
+      (${(st.vectors_bytes/1048576).toFixed(2)} MB)</div>
+    <div style="margin-top:9px">Nothing is committed to the repo: rebuild any time with
+    <code>python -m index.build</code>.</div></div>`;
+
+  if(man){
+    h += `<h2>Instruments indexed</h2><div class="chart" style="padding:0;overflow-x:auto">
+      <table><thead><tr><th>Instrument</th><th>Compilation</th><th>In force</th>
+      <th>Sections</th><th>Definitions</th><th>Chunks</th><th>Words</th><th>Licence</th>
+      </tr></thead><tbody>`;
+    for(const i of man.instruments){
+      h += `<tr><td><b>${esc(i.short)}</b><div class="mono" style="color:var(--text-muted)">${esc(i.title_id)}</div></td>
+        <td class="mono">${esc(i.compilation_no||'as made')}<div style="color:var(--text-muted)">${esc(i.compilation_id)}</div></td>
+        <td>${esc(i.in_force_from)}</td><td>${i.sections}</td><td>${i.definitions}</td>
+        <td>${i.chunks}</td><td>${i.words.toLocaleString()}</td>
+        <td><span class="pill p-ok">${esc(i.licence)}</span></td></tr>`;
+    }
+    h += `</tbody></table></div>`;
+
+    h += `<h2>Composition</h2><div class="grid2">`;
+    h += barChart('Chunks by document type',
+      `${man.total_chunks.toLocaleString()} chunks · ${man.words.toLocaleString()} words · ~${man.est_tokens.toLocaleString()} tokens`,
+      Object.entries(man.by_doc_type).sort((a,b)=>b[1]-a[1])
+        .map(([k,v])=>({label:k, value:v})));
+
+    const tenantRows = (man.tenants||[]).map(t=>({label:t.tenant_id, value:t.chunks}));
+    h += barChart('Private tenant chunks',
+      'Each client\'s own program and SOPs — the part no competitor can index.',
+      tenantRows.length?tenantRows:[{label:'none', value:0}], 'var(--series-3)');
+    h += `</div>`;
+
+    if(man.austrac && Object.keys(man.austrac).length){
+      const a = man.austrac;
+      h += `<h2>AUSTRAC guidance</h2><div class="note">
+        ${a.pages_ok} pages ingested, <b>${a.pages_failed} failed</b>.
+        ${a.pages_failed?`AUSTRAC's site refuses automated requests from many hosts.
+        Save the pages from your browser into <code>data/austrac_manual/</code> and rebuild —
+        the build never blocks on it.`:''}</div>`;
+    }
+  }
+
+  h += `<h2>Browse the index</h2>
+    <div class="filters">
+      <input id="cq" placeholder="Filter by heading or citation key…">
+      <select id="cdt"><option value="">all doc types</option></select>
+      <select id="ct"><option value="">all clients</option></select>
+    </div>
+    <div class="chart" style="padding:0;overflow-x:auto" id="corpus-rows"></div>`;
+  $('#corpus-body').innerHTML = h;
+
+  const dts = man ? Object.keys(man.by_doc_type) : [];
+  $('#cdt').innerHTML += dts.map(d=>`<option>${esc(d)}</option>`).join('');
+  $('#ct').innerHTML += CFG.tenants.map(t=>`<option value="${t.id}">${esc(t.label)}</option>`).join('');
+  ['cq','cdt','ct'].forEach(id => $('#'+id).addEventListener('input', loadRows));
+  loadRows();
+}
+
+async function loadRows(){
+  const p = new URLSearchParams({q:$('#cq').value, doc_type:$('#cdt').value,
+                                tenant_id:$('#ct').value, limit:300});
+  const d = await (await fetch('/api/corpus?'+p)).json();
+  $('#corpus-rows').innerHTML = `<table><thead><tr><th>Citation key</th><th>Type</th>
+    <th>Location</th><th>Client</th><th>Chars</th></tr></thead><tbody>` +
+    d.rows.map(r=>`<tr onclick="showSource('${esc(r.citation_key).replace(/'/g,"\\'")}')"
+      style="cursor:pointer">
+      <td class="mono">${esc(r.citation_key)}</td>
+      <td><span class="pill p-neutral">${esc(r.doc_type)}</span></td>
+      <td>${esc(r.heading_path.join(' › '))}</td>
+      <td>${esc(r.tenant_id||'—')}</td><td>${r.chars}</td></tr>`).join('') +
+    `</tbody></table><div style="padding:11px;font-size:12px;color:var(--text-muted)">
+      Showing ${d.returned} of ${d.total} chunks. Click a row to read it.</div>`;
+}
+
+boot();
+</script>
+</body>
+</html>

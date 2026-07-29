@@ -1,0 +1,160 @@
+# Demo golden set — 25 questions.
+# Not the production golden set: that one comes from the client's real
+# support inbox (see build/03-evaluation.md). This exists so the demo is
+# rehearsed rather than improvised.
+
+- id: A01
+  question: When must a threshold transaction report be given to AUSTRAC?
+  category: reporting
+  expect: answered
+  must_cite_doc: act
+  notes: Deadline question — must cite or refuse, never estimate.
+
+- id: A02
+  question: What is a designated service?
+  category: definitions
+  expect: answered
+  must_cite_doc: act
+
+- id: A03
+  question: How long must I keep customer identification records?
+  category: recordkeeping
+  expect: answered
+
+- id: A04
+  question: What is a suspicious matter report and when must it be given?
+  category: reporting
+  expect: answered
+  notes: 24 hours for terrorism financing, 3 business days otherwise.
+
+- id: A05
+  question: Who is a beneficial owner under the Act?
+  category: definitions
+  expect: answered
+
+- id: A06
+  question: What must be included in an AML/CTF program?
+  category: program
+  expect: answered
+
+- id: A07
+  question: What are the tipping-off restrictions?
+  category: reporting
+  expect: answered
+
+- id: A08
+  question: Is gold bullion a precious metal under the Act?
+  category: definitions
+  expect: answered
+  notes: Section 5A. Good demo question — narrow, verifiable, surprising.
+
+- id: A09
+  question: What is ongoing customer due diligence?
+  category: cdd
+  expect: answered
+
+- id: A10
+  question: What must a reporting entity do before providing a designated service?
+  category: cdd
+  expect: answered
+
+- id: T01
+  question: What does our SOP say about onboarding a trust client?
+  category: tenant
+  tenant: meridian
+  expect: answered
+  must_cite_doc: sop
+  notes: THE differentiating moment. Must cite SOP 14, not the Act.
+
+- id: T02
+  question: Who do we escalate unusual activity to?
+  category: tenant
+  tenant: meridian
+  expect: answered
+  must_cite_doc: sop
+
+- id: T03
+  question: What is our record retention period?
+  category: tenant
+  tenant: meridian
+  expect: answered
+  notes: Should surface SOP 11 alongside the statutory position.
+
+- id: T04
+  question: What are our firm's high-risk client categories?
+  category: tenant
+  tenant: meridian
+  expect: answered
+
+- id: T05
+  question: Which section of our program covers staff training?
+  category: tenant
+  tenant: meridian
+  expect: answered
+  notes: Program Section 9.
+
+- id: R01
+  question: Am I a reporting entity?
+  category: refusal
+  expect: refused
+  reason: entity_scoping
+  notes: The highest-risk question in the domain. Never answered.
+
+- id: R02
+  question: Is this transaction suspicious?
+  category: refusal
+  expect: refused
+  reason: legal_advice
+
+- id: R03
+  question: Can I bill AML compliance work to my client?
+  category: refusal
+  expect: refused
+  notes: Genuinely not in the corpus. A real ALPMA member question.
+
+- id: R04
+  question: What does the New Zealand AML Act require?
+  category: refusal
+  expect: refused
+  reason: out_of_scope
+
+- id: R05
+  question: Should I report my client to AUSTRAC?
+  category: refusal
+  expect: refused
+  reason: legal_advice
+
+- id: R06
+  question: Do the AML rules apply to me?
+  category: refusal
+  expect: refused
+  reason: entity_scoping
+
+- id: E01
+  question: Do the transitional rules apply to me?
+  category: edge
+  expect: any
+  notes: F2026L00393. Largely excludes tranche 2 entities.
+
+- id: E02
+  question: What's in the TCSP program starter kit?
+  category: edge
+  expect: refused
+  notes: There ISN'T one. AUSTRAC published five kits, none for TCSPs.
+         An assistant that reports a gap instead of inventing content is
+         doing exactly what a compliance buyer needs to see.
+
+- id: E03
+  question: What does our SOP say about onboarding a trust client?
+  category: isolation
+  tenant: corvid
+  expect: any
+  notes: Corvid has no trust SOP. Must NOT return Meridian's SOP 14.
+         Any Meridian citation here is a P0 failure.
+
+- id: E04
+  question: What does section 5A say?
+  category: edge
+  expect: answered
+  notes: Direct section lookup — pure dense retrieval fails this,
+         BM25 catches it. Good proof that hybrid matters.

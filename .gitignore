@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+data/index.db
+data/vectors.npy
+data/cache/
+data/austrac_manual/
+eval_results.json

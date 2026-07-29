@@ -1,0 +1,101 @@
+{
+  "instruments": [
+    {
+      "title_id": "C2006A00169",
+      "name": "Anti-Money Laundering and Counter-Terrorism Financing Act 2006",
+      "short": "AML/CTF Act 2006",
+      "compilation_id": "C2026C00274",
+      "compilation_no": "62",
+      "in_force_from": "2026-07-01",
+      "sections": 332,
+      "definitions": 260,
+      "chunks": 630,
+      "words": 81904,
+      "source_url": "https://www.legislation.gov.au/C2006A00169/latest/text",
+      "licence": "CC-BY-4.0"
+    },
+    {
+      "title_id": "F2025L01026",
+      "name": "Anti-Money Laundering and Counter-Terrorism Financing Rules 2025",
+      "short": "AML/CTF Rules 2025",
+      "compilation_id": "F2026C00274",
+      "compilation_no": "1",
+      "in_force_from": "2026-03-31",
+      "sections": 159,
+      "definitions": 36,
+      "chunks": 208,
+      "words": 39338,
+      "source_url": "https://www.legislation.gov.au/F2025L01026/latest/text",
+      "licence": "CC-BY-4.0"
+    },
+    {
+      "title_id": "F2007L01000",
+      "name": "Anti-Money Laundering and Counter-Terrorism Financing (Class Exemptions and Other Matters) Rules 2007",
+      "short": "AML/CTF (Class Exemptions and Other Matters) Rules 2007",
+      "compilation_id": "F2026C00269",
+      "compilation_no": "77",
+      "in_force_from": "2026-03-31",
+      "sections": 6,
+      "definitions": 0,
+      "chunks": 6,
+      "words": 206,
+      "source_url": "https://www.legislation.gov.au/F2007L01000/latest/text",
+      "licence": "CC-BY-4.0"
+    },
+    {
+      "title_id": "F2026L00393",
+      "name": "Anti-Money Laundering and Counter-Terrorism Financing Transitional Rules 2026",
+      "short": "AML/CTF Transitional Rules 2026",
+      "compilation_id": "F2026C00452",
+      "compilation_no": "1",
+      "in_force_from": "2026-05-14",
+      "sections": 21,
+      "definitions": 8,
+      "chunks": 29,
+      "words": 3049,
+      "source_url": "https://www.legislation.gov.au/F2026L00393/latest/text",
+      "licence": "CC-BY-4.0"
+    }
+  ],
+  "austrac": {},
+  "tenants": [
+    {
+      "tenant_id": "corvid",
+      "documents": 3,
+      "chunks": 15,
+      "titles": [
+        "Corvid Advisory - AML/CTF Program",
+        "CV-PROC-02 - Client onboarding",
+        "CV-PROC-05 - Records and retention"
+      ]
+    },
+    {
+      "tenant_id": "meridian",
+      "documents": 6,
+      "chunks": 56,
+      "titles": [
+        "Meridian Accounting Partners - AML/CTF Program",
+        "Meridian Accounting Partners - ML/TF Risk Assessment Summary",
+        "SOP 03 - Initial customer due diligence: individual clients",
+        "SOP 07 - Escalating unusual activity",
+        "SOP 11 - Record keeping and retention",
+        "SOP 14 - Onboarding a trust client"
+      ]
+    }
+  ],
+  "built_at": "2026-07-29T10:44:26+00:00",
+  "total_chunks": 944,
+  "by_doc_type": {
+    "act": 371,
+    "definition": 303,
+    "rules": 199,
+    "program": 16,
+    "sop": 55
+  },
+  "words": 127647,
+  "est_tokens": 178705,
+  "embed_provider": "local (BAAI/bge-small-en-v1.5)",
+  "contextual_headers": false,
+  "db_path": "/Users/dineshkadiam/Documents/Notes/personal projects/RAG/Compliance/demo/data/index.db",
+  "vectors_path": "/Users/dineshkadiam/Documents/Notes/personal projects/RAG/Compliance/demo/data/vectors.npy"
+}
