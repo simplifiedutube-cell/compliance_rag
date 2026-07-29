@@ -91,7 +91,7 @@ def _read_json(path: Path) -> dict | None:
         return None
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def index() -> FileResponse:
     """Chat only. No link to the internal routes from here."""
     return FileResponse(STATIC / "index.html")
