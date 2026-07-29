@@ -22,7 +22,8 @@ for _d in (DATA, CACHE, TENANT_DIR):
 
 # ---------------------------------------------------------------- providers
 
-# Generation: "groq" (free) | "anthropic" | "gemini" (free) | "ollama" (local)
+# Generation: "groq" (free) | "anthropic" | "gemini" (free) | "nvidia" (free)
+#             | "ollama" (local)
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -34,6 +35,12 @@ ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
+
+# NVIDIA NIM — OpenAI-compatible endpoint, free credits on build.nvidia.com.
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+NVIDIA_MODEL = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-3-super-120b-a12b")
+NVIDIA_BASE_URL = os.getenv("NVIDIA_BASE_URL",
+                            "https://integrate.api.nvidia.com/v1")
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
@@ -139,3 +146,12 @@ AUSTRAC_NAMESPACE_ALIASES = [
 
 SEGMENTS = ["accountant", "lawyer", "real_estate", "jeweller", "tcsp"]
 DEMO_SEGMENT = os.getenv("DEMO_SEGMENT", "accountant")
+
+# ------------------------------------------------------------------- access
+# The chat route is what a client sees. The evaluation dashboard and corpus
+# browser are internal: they expose the golden set, refusal rates and every
+# indexed citation key. They live on separate routes behind HTTP Basic.
+# If ADMIN_TOKEN is empty those routes return 404 rather than opening up --
+# failing closed matters more than convenience on a public host.
+ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")

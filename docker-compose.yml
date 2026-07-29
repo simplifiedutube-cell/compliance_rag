@@ -1,0 +1,51 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    # Bound to loopback on purpose: Caddy terminates TLS and proxies in.
+    # Publishing 0.0.0.0:8000 would expose the app directly on port 8000,
+    # bypassing TLS and any rate limiting.
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      EMBED_PROVIDER: local
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
+      NVIDIA_MODEL: ${NVIDIA_MODEL}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      COHERE_API_KEY: ${COHERE_API_KEY}
+      DEMO_SEGMENT: ${DEMO_SEGMENT:-accountant}
+      MIN_RERANK_SCORE: ${MIN_RERANK_SCORE:-0}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_TOKEN: ${ADMIN_TOKEN}
+    # Persist the built index so a rebuild of the image does not force a
+    # re-download of the whole corpus.
+    volumes:
+      - index-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/config')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  index-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,31 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# In the Render dashboard: New > Blueprint > select this repo. Render reads
+# this file, builds app/Dockerfile, and prompts for the secret env vars
+# below (sync: false) instead of storing them in git.
+services:
+  - type: web
+    name: aml-compliance-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: EMBED_PROVIDER
+        value: local
+      - key: DEMO_SEGMENT
+        value: accountant
+      - key: MIN_RERANK_SCORE
+        value: "0"
+      - key: ADMIN_USER
+        value: admin
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false

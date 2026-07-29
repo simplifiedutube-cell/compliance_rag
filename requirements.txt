@@ -10,8 +10,10 @@ fastapi>=0.111
 uvicorn[standard]>=0.30
 pydantic>=2.7
 
-# generation — Groq free tier is the default (LLM_PROVIDER=groq)
-groq>=0.11
+# generation
+groq>=0.11            # LLM_PROVIDER=groq
+google-genai>=1.0     # LLM_PROVIDER=gemini
+openai>=1.40          # LLM_PROVIDER=nvidia (NIM is OpenAI-compatible)
 
 # embeddings — voyage (hosted, 200M free tokens) and local (no key) fallback
 voyageai>=0.3
@@ -22,6 +24,4 @@ cohere>=5.5
 
 # other providers, uncomment if you switch to them
 # anthropic>=0.34
-# google-genai>=1.0     # gemini
-# openai>=1.40
 # ollama speaks plain HTTP — nothing to install

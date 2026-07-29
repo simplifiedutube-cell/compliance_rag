@@ -1,0 +1,17 @@
+# The venv is ~300 MB and is rebuilt inside the image anyway. Without this
+# the whole thing is uploaded to the daemon as build context on every build.
+.venv/
+__pycache__/
+*.pyc
+
+# Never bake secrets into an image layer.
+.env
+
+# Rebuilt during the image build (or mounted as a volume).
+data/index.db
+data/vectors.npy
+data/cache/
+data/austrac_manual/
+
+.git/
+.gitignore

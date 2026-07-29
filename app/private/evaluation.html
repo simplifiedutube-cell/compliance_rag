@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evaluation — internal</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="viz-root">
+
+<header>
+  <h1>AML/CTF Knowledge Assistant <span class="pill p-neutral" style="margin-left:8px">internal</span></h1>
+  <span class="badge" id="b-corpus">…</span>
+  <span class="badge" id="b-embed">…</span>
+  <span class="badge" id="b-gen">…</span>
+  <span style="flex:1"></span>
+
+  <button id="theme" title="Toggle theme">◐</button>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-nav="/evaluation" aria-selected="true">Evaluation</button>
+  <button role="tab" data-nav="/corpus" aria-selected="false">Corpus</button>
+</nav>
+
+<section class="page active" id="page-eval"><div class="wrap" id="eval-body">
+  <p class="spin">Loading…</p>
+</div></section>
+
+<footer id="attrib"></footer>
+
+<dialog id="dlg"><h3 id="dlg-title" style="margin-top:0"></h3><pre id="dlg-body"></pre>
+  <div style="margin-top:14px"><button onclick="document.getElementById('dlg').close()">Close</button></div>
+</dialog>
+
+<script src="/static/common.js"></script>
+<script>
+/* ----------------------------- charts -------------------------------- */
+// Horizontal bar, sequential single hue: magnitude comparison.
+function barChart(title, sub, rows, hue){
+  const max = Math.max(...rows.map(r=>r.value), 1);
+  return `<div class="chart"><h3>${esc(title)}</h3><p class="sub">${esc(sub)}</p>` +
+    rows.map(r=>`<div class="row" title="${esc(r.label)}: ${r.value}">
+      <span class="lab">${esc(r.label)}</span>
+      <span class="track"><span class="bar" style="width:${(r.value/max*100).toFixed(1)}%;
+        background:${hue||'var(--seq-450)'}"></span></span>
+      <span class="val">${r.value.toLocaleString()}</span></div>`).join('') + `</div>`;
+}
+
+// Stacked bar, part-to-whole. Direct labels on every segment (required:
+// aqua sits below 3:1 on the light surface, so colour never carries alone).
+function stackChart(title, sub, segs){
+  const total = segs.reduce((a,s)=>a+s.value,0) || 1;
+  return `<div class="chart"><h3>${esc(title)}</h3><p class="sub">${esc(sub)}</p>
+    <div class="stack">` + segs.filter(s=>s.value>0).map(s=>
+      `<span class="seg" style="width:${(s.value/total*100).toFixed(1)}%;background:${s.color}"
+        title="${esc(s.label)}: ${s.value}">${s.value/total>0.09?s.value:''}</span>`).join('') +
+    `</div><div class="legend">` + segs.map(s=>
+      `<span><i style="background:${s.color}"></i>${esc(s.label)} — <b>${s.value}</b></span>`
+    ).join('') + `</div></div>`;
+}
+
+function kpi(k, v, t, cls){
+  return `<div class="kpi ${cls||''}"><div class="k">${esc(k)}</div>
+    <div class="v">${v}</div><div class="t">${esc(t||'')}</div></div>`;
+}
+/* --------------------------- evaluation ------------------------------ */
+async function loadMetrics(){
+  if(!METRICS) METRICS = await (await fetch('/api/metrics')).json();
+  return METRICS;
+}
+
+async function renderEval(){
+  const m = await loadMetrics();
+  const e = m.eval;
+  if(!e){
+    $('#eval-body').innerHTML = `<div class="note">No evaluation results yet. Run
+      <code>python -m eval.run_eval --retrieval</code> (no API key needed) or
+      <code>python -m eval.run_eval</code> for the full pipeline.</div>`;
+    return;
+  }
+  const full = e.mode === 'full';
+  let h = `<div class="note"><b>${e.total_cases} golden-set cases</b>, mode
+    <b>${esc(e.mode)}</b>, embeddings <b>${esc(e.embed_provider)}</b>${
+    e.llm_provider?`, generation <b>${esc(e.llm_provider)}</b>`:''}, reranker
+    <b>${!e.reranker_configured ? 'off'
+        : (e.reranker_actually_used === e.total_cases ? 'on, all queries'
+        : `on but only ${e.reranker_actually_used}/${e.total_cases} queries`)}</b>.
+    Generated ${esc(e.generated_at)}.
+    ${(e.rerank_errors||[]).length ? `<div style="margin-top:8px;color:var(--critical)">
+      Rerank errors: ${e.rerank_errors.map(esc).join(' · ')}</div>` : ''}
+    ${full?'':' Retrieval-only mode measures isolation and recall; refusal and citation metrics need the full run.'}</div>`;
+
+  h += `<h2>Headline metrics</h2><div class="kpis">`;
+  h += kpi('Cross-tenant leaks', e.leaks, e.leaks?'P0 — stop and fix':'target 0',
+           e.leaks? 'bad':'ok');
+  if(full){
+    h += kpi('Refusal recall', pct(e.refusal_recall),
+             `${e.refusal_correct}/${e.refusal_expected} · target 100%`,
+             e.refusal_recall>=1?'ok':'bad');
+    h += kpi('Invalid citations', e.invalid_citations,
+             e.invalid_citations
+               ? 'caught and dropped before render'
+               : 'target 0 · enforced mechanically',
+             e.invalid_citations?'warn':'ok');
+    h += kpi('Over-refusals', e.over_refusals,
+             `of ${e.answerable} answerable`, e.over_refusals?'warn':'ok');
+    h += kpi('Unexpected refusals', pct(e.unexpected_refusal_rate ?? 0),
+             `${e.over_refusals}/${e.answerable} answerable questions refused`,
+             (e.unexpected_refusal_rate ?? 0) <= 0.05 ? 'ok' : 'warn');
+    h += kpi('Refusal rate (all)', pct(e.refusal_rate),
+             `${pct(e.refusal_by_design_rate)} of this set is refusal-by-design`);
+    h += kpi('Passing', `${e.passing}/${e.total_cases}`, 'expected vs actual');
+    h += kpi('Mean latency', `${e.mean_latency_ms}<span style="font-size:15px"> ms</span>`,
+             'end to end');
+  } else {
+    h += kpi('Cases retrieving', `${e.retrieved_something}/${e.total_cases}`,
+             'at least one source', e.retrieved_something===e.total_cases?'ok':'warn');
+    h += kpi('Mean sources', e.mean_retrieved, 'per question');
+    h += kpi('Mean latency', `${Math.round(e.cases.reduce((a,c)=>a+(c.latency_ms||0),0)/e.cases.length)}<span style="font-size:15px"> ms</span>`,
+             'retrieval only');
+  }
+  h += `</div>`;
+
+  // retrieval mix — why hybrid matters
+  const mix = {dense:0, lexical:0, both:0, expansion:0};
+  for(const c of e.cases) for(const [k,v] of Object.entries(c.why_mix||{})){
+    if(k==='dense') mix.dense+=v; else if(k==='lexical') mix.lexical+=v;
+    else if(k==='both') mix.both+=v; else mix.expansion+=v;
+  }
+  h += `<h2>Retrieval</h2><div class="grid2">`;
+  h += stackChart('Where each source came from',
+    'Lexical-only hits are the ones dense retrieval would have missed — exact section numbers and statutory terms of art.',
+    [{label:'Both methods', value:mix.both, color:'var(--series-1)'},
+     {label:'Dense only', value:mix.dense, color:'var(--series-2)'},
+     {label:'Lexical only (BM25)', value:mix.lexical, color:'var(--series-3)'},
+     {label:'Definitions + cross-refs', value:mix.expansion, color:'var(--text-muted)'}]);
+
+  if(full && e.by_category?.length){
+    const max = Math.max(...e.by_category.map(c=>c.pass+c.fail),1);
+    h += `<div class="chart"><h3>Cases by category</h3>
+      <p class="sub">Pass means the answered/refused outcome matched what the golden set expects.</p>` +
+      e.by_category.map(c=>`<div class="row">
+        <span class="lab">${esc(c.category)}</span>
+        <span class="track">
+          <span class="bar" style="width:${(c.pass/max*100).toFixed(1)}%;background:var(--good);border-radius:0"></span>
+          <span class="bar" style="width:${(c.fail/max*100).toFixed(1)}%;background:var(--critical)"></span>
+        </span><span class="val">${c.pass}/${c.pass+c.fail}</span></div>`).join('') +
+      `<div class="legend"><span><i style="background:var(--good)"></i>✓ pass</span>
+       <span><i style="background:var(--critical)"></i>✗ fail</span></div></div>`;
+  } else {
+    const byCat = {};
+    for(const c of e.cases) byCat[c.category] = (byCat[c.category]||0)+1;
+    h += barChart('Cases by category', 'Composition of the golden set.',
+      Object.entries(byCat).map(([k,v])=>({label:k, value:v})));
+  }
+  h += `</div>`;
+
+  h += `<h2>Every case</h2><div class="chart" style="padding:0;overflow-x:auto">
+    <table><thead><tr><th>ID</th><th>Category</th><th>Question</th><th>Client</th>
+    <th>Expected</th>${full?'<th>Got</th><th>Claims</th>':'<th>Sources</th><th>Top hit</th>'}
+    <th>Leak</th><th>ms</th></tr></thead><tbody>`;
+  for(const c of e.cases){
+    const okPill = c.leak.length ? `<span class="pill p-bad">LEAK</span>`
+                                 : `<span class="pill p-ok">clean</span>`;
+    const outcome = full
+      ? `<td><span class="pill ${c.pass?'p-ok':'p-bad'}">${esc(c.got)}</span></td><td>${c.claims}</td>`
+      : `<td>${c.retrieved}</td><td class="mono">${esc((c.top||'').slice(0,42))}</td>`;
+    h += `<tr><td class="mono">${esc(c.id)}</td><td>${esc(c.category)}</td>
+      <td>${esc(c.question)}</td><td>${esc(c.tenant||'—')}</td>
+      <td><span class="pill p-neutral">${esc(c.expect)}</span></td>
+      ${outcome}<td>${okPill}</td><td>${c.latency_ms}</td></tr>`;
+  }
+  h += `</tbody></table></div>`;
+
+  if(full && e.invalid_citation_detail?.length){
+    h += `<h2>Citation validation</h2><div class="note">
+      The validator rejected ${e.invalid_citations} citation(s) the model
+      invented. <b>This is the guardrail working</b> — the claim never reached
+      the user. Cases:
+      ${e.invalid_citation_detail.map(d=>
+        `<div style="margin-top:6px"><b>${esc(d.id)}</b> → cited
+         <code>${d.keys.map(esc).join(', ')}</code>, which was not in the
+         retrieved set for that query.</div>`).join('')}
+      </div>`;
+  }
+
+  if(full && (e.refusal_missed?.length || e.over_refusal_cases?.length)){
+    h += `<h2>Needs attention</h2><div class="note">`;
+    if(e.refusal_missed?.length)
+      h += `<div><b style="color:var(--critical)">Missed refusals:</b> ${e.refusal_missed.join(', ')}
+            — each one is the entire risk of the product.</div>`;
+    if(e.over_refusal_cases?.length)
+      h += `<div style="margin-top:8px"><b style="color:var(--serious)">Over-refusals:</b>
+            ${e.over_refusal_cases.join(', ')} — an assistant that refuses too much gets switched off.</div>`;
+    h += `</div>`;
+  }
+  $('#eval-body').innerHTML = h;
+}
+
+document.querySelectorAll('nav.tabs button').forEach(b =>
+  b.onclick = () => location.href = b.dataset.nav);
+
+(async function(){ initTheme(); await loadConfig(); await renderEval(); })();
+</script>
+</body>
+</html>
