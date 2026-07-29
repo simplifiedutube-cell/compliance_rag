@@ -15,6 +15,10 @@ services:
         value: groq
       - key: GROQ_MODEL
         value: llama-3.3-70b-versatile
+      - key: LLM_FALLBACK_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
       - key: EMBED_PROVIDER
         value: local
       - key: DEMO_SEGMENT
@@ -24,6 +28,8 @@ services:
       - key: ADMIN_USER
         value: admin
       - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
         sync: false
       - key: ADMIN_TOKEN
         sync: false

@@ -26,6 +26,11 @@ for _d in (DATA, CACHE, TENANT_DIR):
 #             | "ollama" (local)
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
 
+# Optional: if LLM_PROVIDER's rate limit is exhausted mid-demo (Groq free
+# tier is 30 req/min, 1,000/day), retry once against this provider instead of
+# failing the answer closed. Empty = no fallback. See query/llm.py.
+LLM_FALLBACK_PROVIDER = os.getenv("LLM_FALLBACK_PROVIDER", "").lower()
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 

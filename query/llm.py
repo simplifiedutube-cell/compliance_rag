@@ -221,19 +221,30 @@ _BACKENDS = {"groq": _groq, "anthropic": _anthropic,
              "gemini": _gemini, "nvidia": _nvidia, "ollama": _ollama}
 
 
-def generate_text(system: str, user: str, *, max_tokens: int = 120) -> str:
+def _generate(system: str, user: str, max_tokens: int, json_mode: bool) -> str:
     fn = _BACKENDS.get(config.LLM_PROVIDER)
     if fn is None:
         raise GenerationError(f"Unknown LLM_PROVIDER: {config.LLM_PROVIDER}")
-    return (_call_with_retry(fn, system, user, max_tokens, False) or "").strip()
+    try:
+        return _call_with_retry(fn, system, user, max_tokens, json_mode)
+    except GenerationError:
+        # _call_with_retry only raises GenerationError once the primary's own
+        # retries are exhausted on a rate-limit-shaped error -- anything else
+        # (auth, malformed request) propagates as its native exception and
+        # skips the fallback, since a second provider won't fix a bad key.
+        fallback = config.LLM_FALLBACK_PROVIDER
+        ffn = _BACKENDS.get(fallback) if fallback else None
+        if ffn is None or fallback == config.LLM_PROVIDER:
+            raise
+        return _call_with_retry(ffn, system, user, max_tokens, json_mode)
+
+
+def generate_text(system: str, user: str, *, max_tokens: int = 120) -> str:
+    return (_generate(system, user, max_tokens, False) or "").strip()
 
 
 def generate_json(system: str, user: str, *, max_tokens: int = 1600) -> dict:
-    fn = _BACKENDS.get(config.LLM_PROVIDER)
-    if fn is None:
-        raise GenerationError(f"Unknown LLM_PROVIDER: {config.LLM_PROVIDER}")
-
-    text = (_call_with_retry(fn, system, user, max_tokens, True) or "").strip()
+    text = (_generate(system, user, max_tokens, True) or "").strip()
     if not text:
         raise GenerationError("empty response")
 
