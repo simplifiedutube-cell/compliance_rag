@@ -72,7 +72,7 @@ def _call_with_retry(fn, system: str, user: str, max_tokens: int,
 def available() -> bool:
     p = config.LLM_PROVIDER
     return bool(
-        (p == "groq" and config.GROQ_API_KEY)
+        (p == "groq" and config.GROQ_API_KEYS)
         or (p == "anthropic" and config.ANTHROPIC_API_KEY)
         or (p == "gemini" and config.GEMINI_API_KEY)
         or (p == "nvidia" and config.NVIDIA_API_KEY)
@@ -108,10 +108,10 @@ def trains_on_your_data() -> str:
 
 # ------------------------------------------------------------------ backends
 
-def _groq(system: str, user: str, max_tokens: int,
-          json_mode: bool = False) -> str:
+def _groq_call(system: str, user: str, max_tokens: int, api_key: str,
+               json_mode: bool = False) -> str:
     from groq import Groq
-    client = Groq(api_key=config.GROQ_API_KEY)
+    client = Groq(api_key=api_key)
     r = client.chat.completions.create(
         model=config.GROQ_MODEL,
         max_tokens=max_tokens,
@@ -120,6 +120,31 @@ def _groq(system: str, user: str, max_tokens: int,
                   {"role": "user", "content": user}],
     )
     return r.choices[0].message.content or ""
+
+
+def _groq(system: str, user: str, max_tokens: int,
+          json_mode: bool = False) -> str:
+    """Rotate across GROQ_API_KEYS on a per-key rate limit.
+
+    Each free Groq key has its own 100k-tokens/day budget, so a second key
+    is an independent quota, not a fallback provider -- rotation happens
+    immediately, with no backoff sleep, since the next key hasn't been
+    touched today. Only once every key in the pool has been tried does the
+    exception surface to _call_with_retry, whose own backoff-and-retry
+    (and then LLM_FALLBACK_PROVIDER) takes over as before.
+    """
+    if not config.GROQ_API_KEYS:
+        raise GenerationError("no GROQ_API_KEY / GROQ_API_KEYS configured")
+    last: Exception | None = None
+    for key in config.GROQ_API_KEYS:
+        try:
+            return _groq_call(system, user, max_tokens, key,
+                              json_mode=json_mode)
+        except Exception as e:                          # noqa: BLE001
+            if not any(k in str(e).lower() for k in _RATE_LIMITED):
+                raise
+            last = e
+    raise last
 
 
 def _anthropic(system: str, user: str, max_tokens: int,

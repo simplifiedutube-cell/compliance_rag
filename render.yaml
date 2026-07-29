@@ -27,8 +27,8 @@ services:
         value: "0"
       - key: ADMIN_USER
         value: admin
-      - key: GROQ_API_KEY
-        sync: false
+      - key: GROQ_API_KEYS
+        sync: false  # comma-separated pool, e.g. gsk_first,gsk_second
       - key: GEMINI_API_KEY
         sync: false
       - key: ADMIN_TOKEN

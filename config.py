@@ -33,6 +33,12 @@ LLM_FALLBACK_PROVIDER = os.getenv("LLM_FALLBACK_PROVIDER", "").lower()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+# Optional pool to rotate across, comma-separated (e.g. free keys from
+# several Groq accounts). Each key has its own 100k-tokens/day budget, so
+# this multiplies the effective daily quota rather than acting as a
+# fallback provider. Falls back to the single key above if unset.
+GROQ_API_KEYS = [k.strip() for k in os.getenv("GROQ_API_KEYS", "").split(",")
+                 if k.strip()] or ([GROQ_API_KEY] if GROQ_API_KEY else [])
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5")
