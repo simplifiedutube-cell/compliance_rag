@@ -18,7 +18,7 @@ services:
       - key: LLM_FALLBACK_PROVIDER
         value: gemini
       - key: GEMINI_MODEL
-        value: gemini-3.1-flash-lite
+        value: gemini-flash-lite-latest
       - key: EMBED_PROVIDER
         value: local
       - key: DEMO_SEGMENT
